@@ -1,0 +1,10 @@
+*.db
+*.pyc
+.idea
+build
+dist
+*.egg-info
+env
+paket.env
+paket.log
+venv
