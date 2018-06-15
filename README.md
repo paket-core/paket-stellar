@@ -1,2 +1,4 @@
-Stellar operations for the PAKET project 
-========================================
+PEKET Stellar
+=============
+
+This package contains PAKET's Stellar interaction.
