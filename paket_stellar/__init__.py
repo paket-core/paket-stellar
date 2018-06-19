@@ -61,13 +61,9 @@ def get_bul_account(pubkey, accept_untrusted=False):
 def add_memo(builder, memo):
     """Add a memo with limited length."""
     max_byte_length = 28
-    utf8 = memo.encode('utf8')
-    if len(utf8) > max_byte_length:
+    if len(memo) > max_byte_length:
         LOGGER.warning("memo too long (%s > 28), truncating", len(memo))
-        cursor = max_byte_length
-        while cursor > 0 and not (utf8[cursor] & 0xC0) == 0x80:
-            cursor -= 1
-            memo = utf8[:cursor].decode()
+        memo = memo[:max_byte_length]
     builder.add_text_memo(memo)
     return builder
 
