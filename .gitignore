@@ -1,10 +1,11 @@
-*.db
-*.pyc
-.idea
+*$py.class
+*.egg-info
+*.log
+*.py[cod]
 build
 dist
-*.egg-info
-env
+.eggs
+.idea
+__pycache__/
 paket.env
-paket.log
 venv
