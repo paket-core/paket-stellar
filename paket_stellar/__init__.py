@@ -115,18 +115,18 @@ def prepare_send_buls(from_pubkey, to_pubkey, amount):
 
 
 def prepare_escrow(
-        escrow_pubkey, launcher_pubkey, courier_pubkey, recipient_pubkey, payment, collateral, deadline):
+        escrow_pubkey, launcher_pubkey, courier_pubkey, recipient_pubkey, payment, collateral, total, deadline):
     """Prepare escrow transactions."""
     # Refund transaction, in case of failed delivery, timelocked.
     builder = gen_builder(escrow_pubkey, sequence_delta=1)
-    builder.append_payment_op(launcher_pubkey, payment + collateral, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(launcher_pubkey, total, BUL_TOKEN_CODE, ISSUER)
     builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
     add_memo(builder, 'refund')
     refund_envelope = builder.gen_te()
 
     # Payment transaction, in case of successful delivery, requires recipient signature.
     builder = gen_builder(escrow_pubkey, sequence_delta=1)
-    builder.append_payment_op(courier_pubkey, payment + collateral, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(courier_pubkey, total, BUL_TOKEN_CODE, ISSUER)
     add_memo(builder, 'payment')
     payment_envelope = builder.gen_te()
 
