@@ -94,27 +94,27 @@ def submit_transaction_envelope(envelope):
     return submit(builder)
 
 
-def prepare_create_account(from_pubkey, new_pubkey, starting_balance=50000000):
+def prepare_create_account(from_pubkey, new_pubkey, starting_stroop_balance=50000000):
     """Prepare account creation transaction."""
-    starting_bul_balance = util.conversion.stroops_to_units(starting_balance)
+    starting_xlm_balance = util.conversion.stroops_to_units(starting_stroop_balance)
     builder = gen_builder(from_pubkey)
-    builder.append_create_account_op(destination=new_pubkey, starting_balance=starting_bul_balance)
+    builder.append_create_account_op(destination=new_pubkey, starting_balance=starting_xlm_balance)
     return builder.gen_te().xdr().decode()
 
 
-def prepare_trust(from_pubkey, limit=None):
+def prepare_trust(from_pubkey, stroop_limit=None):
     """Prepare trust transaction from account."""
-    limit_bul = util.conversion.stroops_to_units(limit) if limit is not None else limit
+    asset_limit = util.conversion.stroops_to_units(stroop_limit) if stroop_limit is not None else None
     builder = gen_builder(from_pubkey)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, limit_bul)
+    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, asset_limit)
     return builder.gen_te().xdr().decode()
 
 
-def prepare_send_buls(from_pubkey, to_pubkey, amount):
+def prepare_send_buls(from_pubkey, to_pubkey, stroop_amount):
     """Prepare BUL transfer."""
-    amount_bul = util.conversion.stroops_to_units(amount)
+    bul_amount = util.conversion.stroops_to_units(stroop_amount)
     builder = gen_builder(from_pubkey)
-    builder.append_payment_op(to_pubkey, amount_bul, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(to_pubkey, bul_amount, BUL_TOKEN_CODE, ISSUER)
     return builder.gen_te().xdr().decode()
 
 
@@ -188,12 +188,12 @@ def new_account(pubkey):
         raise StellarTransactionFailed("unable to create account {}".format(pubkey))
 
 
-def fund_from_issuer(pubkey, amount):
+def fund_from_issuer(pubkey, stroop_amount):
     """Fund an account directly from issuer. Debug only."""
-    amount_bul = util.conversion.stroops_to_units(amount)
+    bul_amount = util.conversion.stroops_to_units(stroop_amount)
     LOGGER.warning("funding %s from issuer", pubkey)
     builder = stellar_base.builder.Builder(horizon=HORIZON, secret=ISSUER_SEED)
-    builder.append_payment_op(pubkey, amount_bul, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(pubkey, bul_amount, BUL_TOKEN_CODE, ISSUER)
     add_memo(builder, 'fund')
     builder.sign()
     return submit(builder)
