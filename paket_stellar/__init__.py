@@ -112,12 +112,22 @@ def prepare_trust(from_pubkey, stroop_limit=None):
     return builder.gen_te().xdr().decode()
 
 
+def prepare_send(from_pubkey, to_pubkey, stroop_amount, asset_code='XLM', asset_issuer=None):
+    """Prepare asset transfer."""
+    amount_to_send = util.conversion.stroops_to_units(stroop_amount)
+    builder = gen_builder(from_pubkey)
+    builder.append_payment_op(to_pubkey, amount_to_send, asset_code, asset_issuer)
+    return builder.gen_te().xdr().decode()
+
+
 def prepare_send_buls(from_pubkey, to_pubkey, stroop_amount):
     """Prepare BUL transfer."""
-    bul_amount = util.conversion.stroops_to_units(stroop_amount)
-    builder = gen_builder(from_pubkey)
-    builder.append_payment_op(to_pubkey, bul_amount, BUL_TOKEN_CODE, ISSUER)
-    return builder.gen_te().xdr().decode()
+    return prepare_send(from_pubkey, to_pubkey, stroop_amount, BUL_TOKEN_CODE, ISSUER)
+
+
+def prepare_send_lumens(from_pubkey, to_pubkey, stroop_amount):
+    """Prepare XLM transfer."""
+    return prepare_send(from_pubkey, to_pubkey, stroop_amount)
 
 
 def prepare_escrow(
