@@ -87,10 +87,12 @@ def submit(builder):
     return response
 
 
-def submit_transaction_envelope(envelope):
-    """Submit a transaction from an XDR of the envelope."""
-    builder = stellar_base.builder.Builder(horizon=HORIZON, address='')
+def submit_transaction_envelope(envelope, seed=None):
+    """Submit a transaction from an XDR of the envelope. Optionally sign it."""
+    builder = stellar_base.builder.Builder(horizon=HORIZON, address='', secret=seed)
     builder.import_from_xdr(envelope)
+    if seed:
+        builder.sign()
     return submit(builder)
 
 
