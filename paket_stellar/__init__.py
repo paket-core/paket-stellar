@@ -24,6 +24,10 @@ class StellarTransactionFailed(Exception):
     """A stellar transaction failed."""
 
 
+class TrustError(Exception):
+    """A stellar account does not trust asset"""
+
+
 def get_keypair(pubkey=None, seed=None):
     """Get a keypair from pubkey or seed (default to random) with a decent string representation."""
     if pubkey is None:
@@ -47,7 +51,7 @@ def get_bul_account(pubkey, accept_untrusted=False):
         details = stellar_base.address.Address(pubkey, horizon=HORIZON)
         details.get()
     except stellar_base.address.AccountNotExistError:
-        raise AssertionError("no account found for {}".format(pubkey))
+        raise stellar_base.address.AccountNotExistError("no account found for {}".format(pubkey))
     account = {'sequence': details.sequence, 'signers': details.signers, 'thresholds': details.thresholds}
     for balance in details.balances:
         if balance.get('asset_type') == 'native':
@@ -55,7 +59,7 @@ def get_bul_account(pubkey, accept_untrusted=False):
         if balance.get('asset_code') == BUL_TOKEN_CODE and balance.get('asset_issuer') == ISSUER:
             account['bul_balance'] = util.conversion.units_to_stroops(balance['balance'])
     if 'bul_balance' not in account and not accept_untrusted:
-        raise AssertionError("account {} does not trust {} from {}".format(pubkey, BUL_TOKEN_CODE, ISSUER))
+        raise TrustError("account {} does not trust {} from {}".format(pubkey, BUL_TOKEN_CODE, ISSUER))
     return account
 
 
