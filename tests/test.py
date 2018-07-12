@@ -59,12 +59,12 @@ class TestGetBulAccount(BasePaketTest):
         """Test for getting bul account that actualy may not have bul balance"""
         account = paket_stellar.get_bul_account(self.valid_untrusted_pubkey, accept_untrusted=True)
         self.assertNotIn('bul_balance', account)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(paket_stellar.TrustError):
             paket_stellar.get_bul_account(self.valid_untrusted_pubkey)
 
     def test_invalid_pubkey(self):
         """Test for getting bul account from invalid pubkey"""
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(paket_stellar.stellar_base.address.AccountNotExistError):
             paket_stellar.get_bul_account(self.invalid_pubkey)
 
 

@@ -55,9 +55,12 @@ def get_bul_account(pubkey, accept_untrusted=False):
     account = {'sequence': details.sequence, 'signers': details.signers, 'thresholds': details.thresholds}
     for balance in details.balances:
         if balance.get('asset_type') == 'native':
-            account['xlm_balance'] = util.conversion.units_to_stroops(balance['balance'])
+            account['xlm_balance'] = {'balance': util.conversion.units_to_stroops(balance['balance'])}
         if balance.get('asset_code') == BUL_TOKEN_CODE and balance.get('asset_issuer') == ISSUER:
-            account['bul_balance'] = util.conversion.units_to_stroops(balance['balance'])
+            account['bul_balance'] = {
+                'balance': util.conversion.units_to_stroops(balance['balance']),
+                'limit': util.conversion.units_to_stroops(balance['limit'])
+            }
     if 'bul_balance' not in account and not accept_untrusted:
         raise TrustError("account {} does not trust {} from {}".format(pubkey, BUL_TOKEN_CODE, ISSUER))
     return account
