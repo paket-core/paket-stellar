@@ -61,7 +61,7 @@ def get_bul_account(pubkey, accept_untrusted=False):
         if balance.get('asset_code') == BUL_TOKEN_CODE and balance.get('asset_issuer') == ISSUER:
             account['bul_balance'] = {
                 'balance': util.conversion.units_to_stroops(balance['balance'], numeric_representation=True),
-                'limit': util.conversion.units_to_stroops(balance['limit'])
+                'limit': util.conversion.units_to_stroops(balance['limit'], numeric_representation=True)
             }
     if 'bul_balance' not in account and not accept_untrusted:
         raise TrustError("account {} does not trust {} from {}".format(pubkey, BUL_TOKEN_CODE, ISSUER))
