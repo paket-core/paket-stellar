@@ -54,6 +54,7 @@ def get_bul_account(pubkey, accept_untrusted=False):
             account['xlm_balance'] = util.conversion.units_to_stroops(balance['balance'])
         if balance.get('asset_code') == BUL_TOKEN_CODE and balance.get('asset_issuer') == ISSUER:
             account['bul_balance'] = util.conversion.units_to_stroops(balance['balance'])
+            account['bul_limit'] = util.conversion.units_to_stroops(balance['limit'])
     if 'bul_balance' not in account and not accept_untrusted:
         raise AssertionError("account {} does not trust {} from {}".format(pubkey, BUL_TOKEN_CODE, ISSUER))
     return account
@@ -120,6 +121,7 @@ def prepare_send_buls(from_pubkey, to_pubkey, stroop_amount):
     return builder.gen_te().xdr().decode()
 
 
+# pylint: disable=too-many-arguments
 def prepare_escrow(
         escrow_pubkey, launcher_pubkey, courier_pubkey, recipient_pubkey, payment, collateral, deadline):
     """Prepare escrow transactions."""
@@ -176,6 +178,7 @@ def prepare_escrow(
         payment_transaction=payment_envelope.xdr().decode(),
         merge_transaction=merge_envelope.xdr().decode())
     return package_details
+# pylint: enable=too-many-arguments
 
 
 # Debug methods.
