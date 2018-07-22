@@ -10,14 +10,11 @@ import stellar_base.keypair
 import util.conversion
 import util.logger
 
-
+LOGGER = util.logger.logging.getLogger('pkt.paket')
 BUL_TOKEN_CODE = 'BUL'
 ISSUER = os.environ['PAKET_USER_ISSUER']
 ISSUER_SEED = os.environ.get('PAKET_SEED_ISSUER')
 HORIZON = os.environ['PAKET_HORIZON_SERVER']
-
-LOGGER = util.logger.logging.getLogger('pkt.paket')
-util.logger.setup()
 
 
 class StellarTransactionFailed(Exception):
