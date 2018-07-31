@@ -13,8 +13,8 @@ import util.logger
 LOGGER = util.logger.logging.getLogger('pkt.paket')
 DEBUG = bool(os.environ.get('PAKET_DEBUG'))
 BUL_TOKEN_CODE = 'BUL'
-ISSUER = os.environ['PAKET_USER_ISSUER']
-ISSUER_SEED = os.environ.get('PAKET_SEED_ISSUER')
+ISSUER = os.environ['PAKET_ISSUER_PUBKEY']
+ISSUER_SEED = os.environ.get('PAKET_ISSUER_SEED')
 HORIZON_SERVER = os.environ.get(
     'PAKET_HORIZON_SERVER',
     'https://horizon-testnet.stellar.org' if DEBUG else 'https://horizon.stellar.org')
