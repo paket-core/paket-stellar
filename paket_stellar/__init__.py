@@ -24,8 +24,12 @@ class StellarTransactionFailed(Exception):
     """A stellar transaction failed."""
 
 
+class NotOnTestnet(Exception):
+    """Function only available on testnet called on main net."""
+
+
 class TrustError(Exception):
-    """A stellar account does not trust asset"""
+    """A stellar account does not trust asset."""
 
 
 def get_keypair(pubkey=None, seed=None):
@@ -201,7 +205,7 @@ def prepare_escrow(
 def new_account(pubkey):
     """Create a new account and fund it with lumens. Debug only."""
     if not DEBUG:
-        raise NotImplementedError('creating new account and funding it allowed only in debug mode')
+        raise NotOnTestnet('creating new account and funding it allowed only on testnet')
     LOGGER.warning("creating and funding account %s", pubkey)
     request = requests.get("https://friendbot.stellar.org/?addr={}".format(pubkey))
     if request.status_code != 200:
@@ -212,7 +216,7 @@ def new_account(pubkey):
 def fund_from_issuer(pubkey, stroop_amount):
     """Fund an account directly from issuer. Debug only."""
     if not DEBUG:
-        raise NotImplementedError('funding allowed only in debug mode')
+        raise NotOnTestnet('funding allowed only on testnet')
     bul_amount = util.conversion.stroops_to_units(stroop_amount)
     LOGGER.warning("funding %s from issuer", pubkey)
     builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, secret=ISSUER_SEED)
