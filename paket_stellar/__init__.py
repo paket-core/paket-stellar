@@ -15,7 +15,9 @@ DEBUG = bool(os.environ.get('PAKET_DEBUG'))
 BUL_TOKEN_CODE = 'BUL'
 ISSUER = os.environ['PAKET_USER_ISSUER']
 ISSUER_SEED = os.environ.get('PAKET_SEED_ISSUER')
-HORIZON_SERVER = 'https://horizon-testnet.stellar.org' if DEBUG else 'https://horizon.stellar.org'
+HORIZON_SERVER = os.environ.get(
+    'PAKET_HORIZON_SERVER',
+    'https://horizon-testnet.stellar.org' if DEBUG else 'https://horizon.stellar.org')
 
 
 class StellarTransactionFailed(Exception):
@@ -199,7 +201,7 @@ def prepare_escrow(
 def new_account(pubkey):
     """Create a new account and fund it with lumens. Debug only."""
     if not DEBUG:
-        raise AssertionError('creating new account and funding it allowed only in debug mode')
+        raise NotImplementedError('creating new account and funding it allowed only in debug mode')
     LOGGER.warning("creating and funding account %s", pubkey)
     request = requests.get("https://friendbot.stellar.org/?addr={}".format(pubkey))
     if request.status_code != 200:
@@ -210,7 +212,7 @@ def new_account(pubkey):
 def fund_from_issuer(pubkey, stroop_amount):
     """Fund an account directly from issuer. Debug only."""
     if not DEBUG:
-        raise AssertionError('funding allowed only in debug mode')
+        raise NotImplementedError('funding allowed only in debug mode')
     bul_amount = util.conversion.stroops_to_units(stroop_amount)
     LOGGER.warning("funding %s from issuer", pubkey)
     builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, secret=ISSUER_SEED)
