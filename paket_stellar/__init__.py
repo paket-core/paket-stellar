@@ -11,10 +11,13 @@ import util.conversion
 import util.logger
 
 LOGGER = util.logger.logging.getLogger('pkt.paket')
+DEBUG = bool(os.environ.get('PAKET_DEBUG'))
 BUL_TOKEN_CODE = 'BUL'
 ISSUER = os.environ['PAKET_USER_ISSUER']
 ISSUER_SEED = os.environ.get('PAKET_SEED_ISSUER')
-HORIZON = os.environ['PAKET_HORIZON_SERVER']
+HORIZON_SERVER = os.environ.get(
+    'PAKET_HORIZON_SERVER',
+    'https://horizon-testnet.stellar.org' if DEBUG else 'https://horizon.stellar.org')
 
 
 class StellarTransactionFailed(Exception):
@@ -45,7 +48,7 @@ def get_bul_account(pubkey, accept_untrusted=False):
     """Get account details."""
     LOGGER.debug("getting details of %s", pubkey)
     try:
-        details = stellar_base.address.Address(pubkey, horizon=HORIZON)
+        details = stellar_base.address.Address(pubkey, horizon=HORIZON_SERVER)
         details.get()
     except stellar_base.address.AccountNotExistError:
         raise stellar_base.address.AccountNotExistError("no account found for {}".format(pubkey))
@@ -75,9 +78,9 @@ def gen_builder(pubkey='', sequence_delta=None):
     """Create a builder."""
     if sequence_delta:
         sequence = int(get_bul_account(pubkey, accept_untrusted=True)['sequence']) + sequence_delta
-        builder = stellar_base.builder.Builder(horizon=HORIZON, address=pubkey, sequence=sequence)
+        builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, address=pubkey, sequence=sequence)
     else:
-        builder = stellar_base.builder.Builder(horizon=HORIZON, address=pubkey)
+        builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, address=pubkey)
     return builder
 
 
@@ -91,7 +94,7 @@ def submit(builder):
 
 def submit_transaction_envelope(envelope, seed=None):
     """Submit a transaction from an XDR of the envelope. Optionally sign it."""
-    builder = stellar_base.builder.Builder(horizon=HORIZON, address='', secret=seed)
+    builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, address='', secret=seed)
     builder.import_from_xdr(envelope)
     if seed:
         builder.sign()
@@ -197,6 +200,8 @@ def prepare_escrow(
 
 def new_account(pubkey):
     """Create a new account and fund it with lumens. Debug only."""
+    if not DEBUG:
+        raise NotImplementedError('creating new account and funding it allowed only in debug mode')
     LOGGER.warning("creating and funding account %s", pubkey)
     request = requests.get("https://friendbot.stellar.org/?addr={}".format(pubkey))
     if request.status_code != 200:
@@ -206,9 +211,11 @@ def new_account(pubkey):
 
 def fund_from_issuer(pubkey, stroop_amount):
     """Fund an account directly from issuer. Debug only."""
+    if not DEBUG:
+        raise NotImplementedError('funding allowed only in debug mode')
     bul_amount = util.conversion.stroops_to_units(stroop_amount)
     LOGGER.warning("funding %s from issuer", pubkey)
-    builder = stellar_base.builder.Builder(horizon=HORIZON, secret=ISSUER_SEED)
+    builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, secret=ISSUER_SEED)
     builder.append_payment_op(pubkey, bul_amount, BUL_TOKEN_CODE, ISSUER)
     add_memo(builder, 'fund')
     builder.sign()
