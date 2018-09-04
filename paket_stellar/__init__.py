@@ -162,7 +162,7 @@ def prepare_escrow(
     builder = gen_builder(escrow_pubkey, sequence_delta=2)
     builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
     builder.append_account_merge_op(launcher_pubkey)
-    add_memo(builder, 'close account')
+    add_memo(builder, 'close escrow')
     merge_envelope = builder.gen_te()
 
     # Set transactions and recipient as only signers.
@@ -196,6 +196,57 @@ def prepare_escrow(
         payment_transaction=payment_envelope.xdr().decode(),
         merge_transaction=merge_envelope.xdr().decode())
     return package_details
+
+
+def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_part, relayee_part, deadline):
+    """Prepare relay transactions."""
+    # Relay transaction, splitting a payment between a relayer and a relayee.
+    builder = gen_builder(relay_pubkey, sequence_delta=1)
+    builder.append_payment_op(relayer_pubkey, relayer_part, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(relayee_pubkey, relayee_part, BUL_TOKEN_CODE, ISSUER)
+    add_memo(builder, 'relay')
+    relay_envelope = builder.gen_te()
+
+    # Merge transaction, to drain the remaining XLM from the account once relay transaction was submitted.
+    builder = gen_builder(relay_pubkey, sequence_delta=2)
+    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_account_merge_op(relayer_pubkey)
+    add_memo(builder, 'close relay')
+    sequence_merge_envelope = builder.gen_te()
+
+    # Merge transaction, to drain the remaining XLM from the account even if
+    # relay transaction was not submitted, but only after deadline has passed.
+    builder = gen_builder(relay_pubkey, sequence_delta=1)
+    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_account_merge_op(relayer_pubkey)
+    builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
+    add_memo(builder, 'close relay')
+    timeloacked_merge_envelope = builder.gen_te()
+
+    # Set transactions as only signers.
+    builder = gen_builder(relay_pubkey)
+    builder.append_set_options_op(
+        signer_address=relay_envelope.hash_meta(),
+        signer_type='preAuthTx',
+        signer_weight=1)
+    builder.append_set_options_op(
+        signer_address=sequence_merge_envelope.hash_meta(),
+        signer_type='preAuthTx',
+        signer_weight=1)
+    builder.append_set_options_op(
+        signer_address=timeloacked_merge_envelope.hash_meta(),
+        signer_type='preAuthTx',
+        signer_weight=1)
+    builder.append_set_options_op(
+        master_weight=0, low_threshold=1, med_threshold=1, high_threshold=1)
+    add_memo(builder, 'freeze')
+    set_options_envelope = builder.gen_te()
+
+    return {
+        set_options_envelope: set_options_envelope,
+        relay_envelope: relay_envelope,
+        sequence_merge_envelope: sequence_merge_envelope,
+        timeloacked_merge_envelope: timeloacked_merge_envelope}
 # pylint: enable=too-many-arguments
 
 
