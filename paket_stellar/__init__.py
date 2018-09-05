@@ -188,22 +188,22 @@ def prepare_escrow(
     add_memo(builder, 'freeze')
     set_options_envelope = builder.gen_te()
 
-    package_details = dict(
+    escrow_details = dict(
         escrow_pubkey=escrow_pubkey, launcher_pubkey=launcher_pubkey, recipient_pubkey=recipient_pubkey,
         payment=payment, collateral=collateral, deadline=deadline,
         set_options_transaction=set_options_envelope.xdr().decode(),
         refund_transaction=refund_envelope.xdr().decode(),
         payment_transaction=payment_envelope.xdr().decode(),
         merge_transaction=merge_envelope.xdr().decode())
-    return package_details
+    return escrow_details
 
 
-def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_part, relayee_part, deadline):
+def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops, relayee_stroops, deadline):
     """Prepare relay transactions."""
     # Relay transaction, splitting a payment between a relayer and a relayee.
     builder = gen_builder(relay_pubkey, sequence_delta=1)
-    builder.append_payment_op(relayer_pubkey, relayer_part, BUL_TOKEN_CODE, ISSUER)
-    builder.append_payment_op(relayee_pubkey, relayee_part, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(relayer_pubkey, relayer_stroops, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(relayee_pubkey, relayee_stroops, BUL_TOKEN_CODE, ISSUER)
     add_memo(builder, 'relay')
     relay_envelope = builder.gen_te()
 
@@ -221,7 +221,7 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_part, re
     builder.append_account_merge_op(relayer_pubkey)
     builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
     add_memo(builder, 'close relay')
-    timeloacked_merge_envelope = builder.gen_te()
+    timelock_merge_envelope = builder.gen_te()
 
     # Set transactions as only signers.
     builder = gen_builder(relay_pubkey)
@@ -234,7 +234,7 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_part, re
         signer_type='preAuthTx',
         signer_weight=1)
     builder.append_set_options_op(
-        signer_address=timeloacked_merge_envelope.hash_meta(),
+        signer_address=timelock_merge_envelope.hash_meta(),
         signer_type='preAuthTx',
         signer_weight=1)
     builder.append_set_options_op(
@@ -242,11 +242,14 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_part, re
     add_memo(builder, 'freeze')
     set_options_envelope = builder.gen_te()
 
-    return {
-        set_options_envelope: set_options_envelope,
-        relay_envelope: relay_envelope,
-        sequence_merge_envelope: sequence_merge_envelope,
-        timeloacked_merge_envelope: timeloacked_merge_envelope}
+    relay_details = dict(
+        relay_pubkey=relay_pubkey, relayer_pubkey=relayer_pubkey, relayee_pubkey=relayee_pubkey,
+        relayer_stroops=relayer_stroops, relayee_stroops=relayee_stroops, deadline=deadline,
+        set_options_transaction=set_options_envelope.xdr().decode(),
+        relay_transactions=relay_envelope.xdr().decode(),
+        sequence_merge_transaction=sequence_merge_envelope.xdr().decode(),
+        timelock_merge_transaction=timelock_merge_envelope.xdr().decode())
+    return relay_details
 # pylint: enable=too-many-arguments
 
 
