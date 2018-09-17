@@ -5,8 +5,24 @@ import unittest
 import paket_stellar
 
 
+def create_and_prepare_account(new_account=False, xlm_starting_balance=50000000, trust_bul=False):
+    """Generate new keypair, and optionally create account and set trust."""
+    keypair = paket_stellar.get_keypair()
+
+    if new_account:
+        create_account_transaction = paket_stellar.prepare_create_account(
+            paket_stellar.ISSUER, keypair.address().decode(), xlm_starting_balance)
+        paket_stellar.submit_transaction_envelope(create_account_transaction, paket_stellar.ISSUER_SEED)
+
+    if new_account and trust_bul:
+        trust_transaction = paket_stellar.prepare_trust(keypair.address().decode())
+        paket_stellar.submit_transaction_envelope(trust_transaction, keypair.seed().decode())
+
+    return keypair
+
+
 class BasePaketTest(unittest.TestCase):
-    """Base class for all paket tests"""
+    """Base class for all paket tests."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,7 +34,7 @@ class BasePaketTest(unittest.TestCase):
 
 
 class TestGetKeypair(BasePaketTest):
-    """Tests for get_keypair function"""
+    """Tests for get_keypair function."""
 
     def test_get_from_seed(self):
         """Test for getting keypair from seed"""
@@ -48,7 +64,7 @@ class TestGetKeypair(BasePaketTest):
 
 
 class TestGetBulAccount(BasePaketTest):
-    """Tests for get_bul_account function"""
+    """Tests for get_bul_account function."""
 
     def test_get_bul_account(self):
         """Test for getting bul account"""
@@ -69,7 +85,7 @@ class TestGetBulAccount(BasePaketTest):
 
 
 class TestAddMemo(BasePaketTest):
-    """Tests for adding memo"""
+    """Tests for adding memo."""
 
     def test_long_memo(self):
         """Test for adding memo with length greater than 28 bytes"""
@@ -89,7 +105,7 @@ class TestAddMemo(BasePaketTest):
 
 
 class TestSubmit(BasePaketTest):
-    """Tests for submit function"""
+    """Tests for submit function."""
 
     def test_submit(self):
         """Test submitting properly created and signed transaction"""
@@ -110,3 +126,18 @@ class TestSubmit(BasePaketTest):
         builder.append_create_account_op(destination=pubkey, starting_balance=5)
         with self.assertRaises(paket_stellar.StellarTransactionFailed):
             paket_stellar.submit(builder)
+
+
+class TestRelay(BasePaketTest):
+    """Test for relay transactions."""
+
+    def test_create_relay(self):
+        """Test creating relay transactions."""
+
+        relay_keypair = create_and_prepare_account(new_account=True, trust_bul=True)
+        relayer_keypair = paket_stellar.get_keypair()
+        relayee_keypair = paket_stellar.get_keypair()
+
+        relay_details = paket_stellar.prepare_relay(
+            relay_keypair.address().decode(), relayer_keypair.address().decode(),
+            relayee_keypair.address().decode(), 100000000, 150000000, 1568455600)
