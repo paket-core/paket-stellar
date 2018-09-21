@@ -200,10 +200,13 @@ def prepare_escrow(
 
 def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops, relayee_stroops, deadline):
     """Prepare relay transactions."""
+    relayer_buls = util.conversion.stroops_to_units(relayer_stroops)
+    relayee_buls = util.conversion.stroops_to_units(relayee_stroops)
+
     # Relay transaction, splitting a payment between a relayer and a relayee.
     builder = gen_builder(relay_pubkey, sequence_delta=1)
-    builder.append_payment_op(relayer_pubkey, relayer_stroops, BUL_TOKEN_CODE, ISSUER)
-    builder.append_payment_op(relayee_pubkey, relayee_stroops, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(relayer_pubkey, relayer_buls, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(relayee_pubkey, relayee_buls, BUL_TOKEN_CODE, ISSUER)
     add_memo(builder, 'relay')
     relay_envelope = builder.gen_te()
 
