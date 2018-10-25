@@ -249,7 +249,7 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops,
         relay_pubkey=relay_pubkey, relayer_pubkey=relayer_pubkey, relayee_pubkey=relayee_pubkey,
         relayer_stroops=relayer_stroops, relayee_stroops=relayee_stroops, deadline=deadline,
         set_options_transaction=set_options_envelope.xdr().decode(),
-        relay_transactions=relay_envelope.xdr().decode(),
+        relay_transaction=relay_envelope.xdr().decode(),
         sequence_merge_transaction=sequence_merge_envelope.xdr().decode(),
         timelock_merge_transaction=timelock_merge_envelope.xdr().decode())
     return relay_details

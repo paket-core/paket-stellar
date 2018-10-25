@@ -141,3 +141,9 @@ class TestRelay(BasePaketTest):
         relay_details = paket_stellar.prepare_relay(
             relay_keypair.address().decode(), relayer_keypair.address().decode(),
             relayee_keypair.address().decode(), 100000000, 150000000, 1568455600)
+
+        self.assertTrue(
+            relay_details['set_options_transaction'] and
+            relay_details['relay_transaction'] and
+            relay_details['sequence_merge_transaction'] and
+            relay_details['timelock_merge_transaction'])
