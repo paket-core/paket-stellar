@@ -1,3 +1,3 @@
 ../py-stellar-base
 ../util
-requests==2.18.4
+requests==2.20.0

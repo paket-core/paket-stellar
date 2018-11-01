@@ -9,7 +9,7 @@ setup(
     license='GNU GPL',
     packages=['paket_stellar'],
     install_requires=[
-        'requests==2.18.4'
+        'requests==2.20.0'
     ],
     test_suite='tests',
     zip_safe=False)
