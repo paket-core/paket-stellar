@@ -1,4 +1,4 @@
-"""Use PaKeT smart contract."""
+"""Use PAKET smart contract."""
 import os
 
 import requests
