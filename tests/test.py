@@ -1,23 +1,58 @@
 """Tests for paket module."""
 import unittest
 
+import util.logger
+
 import paket_stellar
 
 
-def setup_account(new_account=False, xlm_starting_balance=50000000, trust_bul=False):
+util.logger.setup()
+
+LOGGER = util.logger.logging.getLogger('pkt.paket_stellar.tests')
+START_ACCOUNT_BALANCE = 1000000000
+MINIMUM_ACCOUNT_BALANCE = 50000000
+
+BUL_ACCOUNT_SEED = 'SC2HZK6TXU5GJ2BSADFZPIDM4EFSTLULY3WUMI2FPYI7F44PFVQPIO6Z'
+REGULAR_ACCOUNT_SEED = 'SCQHHZ5DPDFN7IPOOLE47IWF6UUPJUPTP474FQCZA2UGXTZZ4J2O4PZY'
+RELAY_SEED = 'SBV4FBXKQFAOS4TFGPL6AQDZLDYRLEPCM2IQCFOOWR77KHOG3RJB62KR'
+SEED = 'SA6IIH3J3YTCEYBJ5ZMSCTLXUIHJOOKLOH6HVWCSB4HMERXQVI3M2YSP'
+
+
+def setup_account(seed, new_account=False, add_trust=False):
     """Generate new keypair, and optionally create account and set trust."""
-    keypair = paket_stellar.get_keypair()
+    keypair = paket_stellar.get_keypair(seed=seed)
+    pubkey = keypair.address().decode()
+    seed = keypair.seed().decode()
 
     if new_account:
-        create_account_transaction = paket_stellar.prepare_create_account(
-            paket_stellar.ISSUER, keypair.address().decode(), xlm_starting_balance)
-        paket_stellar.submit_transaction_envelope(create_account_transaction, paket_stellar.ISSUER_SEED)
+        try:
+            account = paket_stellar.get_bul_account(pubkey, accept_untrusted=True)
+        except paket_stellar.stellar_base.address.AccountNotExistError:
+            LOGGER.info("%s not exist and will be created", pubkey)
+            create_account_transaction = paket_stellar.prepare_create_account(
+                paket_stellar.ISSUER, pubkey, START_ACCOUNT_BALANCE)
+            paket_stellar.submit_transaction_envelope(create_account_transaction, paket_stellar.ISSUER_SEED)
+        else:
+            LOGGER.info("%s already exist", pubkey)
+            if account['xlm_balance'] < MINIMUM_ACCOUNT_BALANCE:
+                LOGGER.info("%s has %s XLM on balance and need to be funded", pubkey, account['xlm_balance'])
+                send_xlm_transaction = paket_stellar.prepare_send_lumens(
+                    paket_stellar.ISSUER, pubkey, START_ACCOUNT_BALANCE)
+                paket_stellar.submit_transaction_envelope(send_xlm_transaction, paket_stellar.ISSUER_SEED)
+            else:
+                LOGGER.info("%s has %s XLM on balance", pubkey, account['xlm_balance'])
 
-    if new_account and trust_bul:
-        trust_transaction = paket_stellar.prepare_trust(keypair.address().decode())
-        paket_stellar.submit_transaction_envelope(trust_transaction, keypair.seed().decode())
+    if new_account and add_trust:
+        try:
+            paket_stellar.get_bul_account(pubkey)
+        except paket_stellar.TrustError:
+            LOGGER.info("BUL trustline will be added to %s", pubkey)
+            trust_transaction = paket_stellar.prepare_trust(pubkey)
+            paket_stellar.submit_transaction_envelope(trust_transaction, seed)
+        else:
+            LOGGER.info("%s already trust BUL", pubkey)
 
-    return keypair
+    return pubkey, seed
 
 
 # pylint: disable=too-many-instance-attributes
@@ -27,22 +62,14 @@ class BasePaketTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.invalid_seed = 'invalid seed string'
+        self.bul_account_pubkey, self.bul_account_seed = setup_account(
+            BUL_ACCOUNT_SEED, new_account=True, add_trust=True)
+        self.regular_account_pubkey, self.regular_account_seed = setup_account(
+            REGULAR_ACCOUNT_SEED, new_account=True)
+        self.pubkey, self.seed = setup_account(SEED)
         self.invalid_pubkey = 'invalid pubkey string'
-
-        bul_account_keypair = setup_account(new_account=True, trust_bul=True)
-        self.bul_account_seed = bul_account_keypair.seed().decode()
-        self.bul_account_pubkey = bul_account_keypair.address().decode()
-
-        regular_account_keypair = setup_account(new_account=True, xlm_starting_balance=100000000)
-        self.regular_account_seed = regular_account_keypair.seed().decode()
-        self.regular_account_pubkey = regular_account_keypair.address().decode()
-
-        keypair = setup_account()
-        self.seed = keypair.seed().decode()
-        self.address = keypair.address().decode()
+        self.invalid_seed = 'invalid seed string'
 # pylint: enable=too-many-instance-attributes
-
 
 
 class TestGetKeypair(BasePaketTest):
@@ -51,11 +78,11 @@ class TestGetKeypair(BasePaketTest):
     def test_get_from_seed(self):
         """Test for getting keypair from seed."""
         keypair = paket_stellar.get_keypair(seed=self.seed)
-        self.assertEqual(keypair.address().decode(), self.address)
+        self.assertEqual(keypair.address().decode(), self.pubkey)
 
     def test_get_from_pubkey(self):
         """Test for getting keypair from pubkey."""
-        keypair = paket_stellar.get_keypair(pubkey=self.address)
+        keypair = paket_stellar.get_keypair(pubkey=self.pubkey)
         self.assertIsNone(keypair.signing_key)
 
     def test_get_random(self):
@@ -66,12 +93,12 @@ class TestGetKeypair(BasePaketTest):
 
     def test_get_from_invalid_seed(self):
         """Test for getting keypair from invalid seed."""
-        with self.assertRaises(paket_stellar.stellar_base.exceptions.DecodeError):
+        with self.assertRaises(paket_stellar.stellar_base.utils.DecodeError):
             paket_stellar.get_keypair(seed=self.invalid_seed)
 
     def test_get_from_invalid_pubkey(self):
         """Test for getting from invalid pubkey."""
-        with self.assertRaises(paket_stellar.stellar_base.exceptions.DecodeError):
+        with self.assertRaises(paket_stellar.stellar_base.utils.DecodeError):
             paket_stellar.get_keypair(pubkey=self.invalid_pubkey)
 
 
@@ -140,12 +167,12 @@ class TestRelay(BasePaketTest):
     def test_create_relay(self):
         """Test creating relay transactions."""
 
-        relay_keypair = setup_account(new_account=True, trust_bul=True)
+        relay_pubkey, _ = setup_account(RELAY_SEED, new_account=True, add_trust=True)
         relayer_keypair = paket_stellar.get_keypair()
         relayee_keypair = paket_stellar.get_keypair()
 
         relay_details = paket_stellar.prepare_relay(
-            relay_keypair.address().decode(), relayer_keypair.address().decode(),
+            relay_pubkey, relayer_keypair.address().decode(),
             relayee_keypair.address().decode(), 100000000, 150000000, 1568455600)
 
         self.assertTrue(
