@@ -27,7 +27,7 @@ def setup_account(seed, new_account=False, add_trust=False):
     if new_account:
         try:
             account = paket_stellar.get_bul_account(pubkey, accept_untrusted=True)
-        except paket_stellar.stellar_base.address.AccountNotExistError:
+        except paket_stellar.StellarAccountNotExists:
             LOGGER.info("%s not exist and will be created", pubkey)
             create_account_transaction = paket_stellar.prepare_create_account(
                 paket_stellar.ISSUER, pubkey, START_ACCOUNT_BALANCE)
