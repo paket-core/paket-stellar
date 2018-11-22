@@ -153,7 +153,7 @@ def prepare_escrow(
     # Refund transaction, in case of failed delivery, timelocked.
     builder = gen_builder(escrow_pubkey, sequence_delta=1)
     builder.append_payment_op(launcher_pubkey, total, BUL_TOKEN_CODE, ISSUER)
-    builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
+    builder.add_time_bounds({'minTime': deadline, 'maxTime': 0})
     add_memo(builder, 'refund')
     refund_envelope = builder.gen_te()
 
@@ -227,7 +227,7 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops,
     builder = gen_builder(relay_pubkey, sequence_delta=1)
     builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(relayer_pubkey)
-    builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
+    builder.add_time_bounds({'minTime': deadline, 'maxTime': 0})
     add_memo(builder, 'close relay')
     timelock_merge_envelope = builder.gen_te()
 
