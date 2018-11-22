@@ -122,7 +122,7 @@ def prepare_trust(from_pubkey, stroop_limit=None):
     """Prepare trust transaction from account."""
     asset_limit = util.conversion.stroops_to_units(stroop_limit) if stroop_limit is not None else None
     builder = gen_builder(from_pubkey)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, asset_limit)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, asset_limit)
     return builder.gen_te().xdr().decode()
 
 
@@ -165,7 +165,7 @@ def prepare_escrow(
 
     # Merge transaction, to drain the remaining XLM from the account, timelocked.
     builder = gen_builder(escrow_pubkey, sequence_delta=2)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(launcher_pubkey)
     add_memo(builder, 'close escrow')
     merge_envelope = builder.gen_te()
@@ -217,7 +217,7 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops,
 
     # Merge transaction, to drain the remaining XLM from the account once relay transaction was submitted.
     builder = gen_builder(relay_pubkey, sequence_delta=2)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(relayer_pubkey)
     add_memo(builder, 'close relay')
     sequence_merge_envelope = builder.gen_te()
@@ -225,7 +225,7 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops,
     # Merge transaction, to drain the remaining XLM from the account even if
     # relay transaction was not submitted, but only after deadline has passed.
     builder = gen_builder(relay_pubkey, sequence_delta=1)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(relayer_pubkey)
     builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
     add_memo(builder, 'close relay')
