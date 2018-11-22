@@ -93,12 +93,12 @@ class TestGetKeypair(BasePaketTest):
 
     def test_get_from_invalid_seed(self):
         """Test for getting keypair from invalid seed."""
-        with self.assertRaises(paket_stellar.stellar_base.utils.DecodeError):
+        with self.assertRaises(paket_stellar.stellar_base.exceptions.StellarSecretInvalidError):
             paket_stellar.get_keypair(seed=self.invalid_seed)
 
     def test_get_from_invalid_pubkey(self):
         """Test for getting from invalid pubkey."""
-        with self.assertRaises(paket_stellar.stellar_base.utils.DecodeError):
+        with self.assertRaises(paket_stellar.stellar_base.exceptions.StellarAddressInvalidError):
             paket_stellar.get_keypair(pubkey=self.invalid_pubkey)
 
 
@@ -156,7 +156,7 @@ class TestSubmit(BasePaketTest):
         new_keypair = paket_stellar.get_keypair()
         pubkey = new_keypair.address().decode()
         builder = paket_stellar.gen_builder(pubkey=self.regular_account_pubkey)
-        builder.append_create_account_op(destination=pubkey, starting_balance=5)
+        builder.append_create_account_op(destination=pubkey, starting_balance='5')
         with self.assertRaises(paket_stellar.StellarTransactionFailed):
             paket_stellar.submit(builder)
 
