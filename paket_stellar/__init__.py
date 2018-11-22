@@ -95,10 +95,10 @@ def gen_builder(pubkey='', sequence_delta=None):
 
 def submit(builder):
     """Submit a transaction and raise an exception if it fails."""
-    response = builder.submit()
-    if 'status' in response and response['status'] >= 300:
-        raise StellarTransactionFailed(response)
-    return response
+    try:
+        return builder.submit()
+    except stellar_base.exceptions.HorizonError as exception:
+        raise StellarTransactionFailed(exception.message)
 
 
 def submit_transaction_envelope(envelope, seed=None):
