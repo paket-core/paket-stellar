@@ -101,9 +101,9 @@ def submit(builder):
         raise StellarTransactionFailed(exception.message)
 
 
-def submit_transaction_envelope(envelope, seed=None):
+def submit_transaction_envelope(envelope, address=None, seed=None):
     """Submit a transaction from an XDR of the envelope. Optionally sign it."""
-    builder = stellar_base.builder.Builder(horizon_uri=HORIZON_SERVER, address='', secret=seed)
+    builder = stellar_base.builder.Builder(horizon_uri=HORIZON_SERVER, address=address, secret=seed)
     builder.import_from_xdr(envelope)
     if seed:
         builder.sign()
