@@ -84,7 +84,7 @@ def add_memo(builder, memo):
     return builder
 
 
-def gen_builder(pubkey='', sequence_delta=None):
+def gen_builder(pubkey, sequence_delta=None):
     """Create a builder."""
     if sequence_delta:
         sequence = int(get_bul_account(pubkey, accept_untrusted=True)['sequence']) + sequence_delta
