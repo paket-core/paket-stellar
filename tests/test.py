@@ -148,7 +148,7 @@ class TestSubmit(BasePaketTest):
         create_account_transaction = paket_stellar.prepare_create_account(
             self.regular_account_pubkey, pubkey, 50000000)
         result = paket_stellar.submit_transaction_envelope(
-            create_account_transaction, self.regular_account_pubkey, self.regular_account_seed)
+            create_account_transaction, self.regular_account_seed)
         self.assertIn('result_xdr', result)
         self.assertEqual(result['result_xdr'], 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=')
 

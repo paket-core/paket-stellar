@@ -7,6 +7,7 @@ import stellar_base.asset
 import stellar_base.builder
 import stellar_base.keypair
 import stellar_base.exceptions
+import stellar_base.transaction_envelope
 
 import util.conversion
 import util.logger
@@ -101,8 +102,12 @@ def submit(builder):
         raise StellarTransactionFailed(exception.message)
 
 
-def submit_transaction_envelope(envelope, address=None, seed=None):
+def submit_transaction_envelope(envelope, seed=None):
     """Submit a transaction from an XDR of the envelope. Optionally sign it."""
+    address = None
+    if seed is None:
+        transaction_envelope = stellar_base.transaction_envelope.TransactionEnvelope.from_xdr(envelope)
+        address = transaction_envelope.tx.source
     builder = stellar_base.builder.Builder(horizon_uri=HORIZON_SERVER, address=address, secret=seed)
     builder.import_from_xdr(envelope)
     if seed:
