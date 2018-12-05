@@ -227,8 +227,8 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops,
     add_memo(builder, 'close relay')
     sequence_merge_envelope = builder.gen_te()
 
-    # Merge transaction, to drain the remaining XLM from the account even if
-    # relay transaction was not submitted, but only after deadline has passed.
+    # Timelocked merge transaction, to drain the remaining XLM from the account
+    # even in case the relay transaction was not submitted.
     builder = gen_builder(relay_pubkey, sequence_delta=1)
     builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(relayer_pubkey)
