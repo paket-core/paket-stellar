@@ -151,20 +151,20 @@ def prepare_send_lumens(from_pubkey, to_pubkey, stroop_amount):
 
 # pylint: disable=too-many-arguments
 def prepare_escrow(
-        escrow_pubkey, launcher_pubkey, courier_pubkey, recipient_pubkey, payment, collateral, deadline):
+        escrow_pubkey, launcher_pubkey, courier_pubkey, recipient_pubkey, stroops_amount, deadline):
     """Prepare escrow transactions."""
-    total = util.conversion.stroops_to_units(payment + collateral)
+    buls_amount = util.conversion.stroops_to_units(stroops_amount)
 
     # Refund transaction, in case of failed delivery, timelocked.
     builder = gen_builder(escrow_pubkey, sequence_delta=1)
-    builder.append_payment_op(launcher_pubkey, total, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(launcher_pubkey, buls_amount, BUL_TOKEN_CODE, ISSUER)
     builder.add_time_bounds({'minTime': deadline, 'maxTime': 0})
     add_memo(builder, 'refund')
     refund_envelope = builder.gen_te()
 
     # Payment transaction, in case of successful delivery, requires recipient signature.
     builder = gen_builder(escrow_pubkey, sequence_delta=1)
-    builder.append_payment_op(courier_pubkey, total, BUL_TOKEN_CODE, ISSUER)
+    builder.append_payment_op(courier_pubkey, buls_amount, BUL_TOKEN_CODE, ISSUER)
     add_memo(builder, 'payment')
     payment_envelope = builder.gen_te()
 
@@ -200,7 +200,7 @@ def prepare_escrow(
 
     escrow_details = dict(
         escrow_pubkey=escrow_pubkey, launcher_pubkey=launcher_pubkey, recipient_pubkey=recipient_pubkey,
-        payment=payment, collateral=collateral, deadline=deadline,
+        stroops_amount=stroops_amount, deadline=deadline,
         set_options_transaction=set_options_envelope.xdr().decode(),
         refund_transaction=refund_envelope.xdr().decode(),
         payment_transaction=payment_envelope.xdr().decode(),
