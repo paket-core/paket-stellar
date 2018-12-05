@@ -6,6 +6,8 @@ import stellar_base.address
 import stellar_base.asset
 import stellar_base.builder
 import stellar_base.keypair
+import stellar_base.exceptions
+import stellar_base.transaction_envelope
 
 import util.conversion
 import util.logger
@@ -18,6 +20,10 @@ ISSUER_SEED = os.environ.get('PAKET_ISSUER_SEED')
 HORIZON_SERVER = os.environ.get(
     'PAKET_HORIZON_SERVER',
     'https://horizon-testnet.stellar.org' if DEBUG else 'https://horizon.stellar.org')
+
+
+class StellarAccountNotExists(Exception):
+    """A stellar account not exist."""
 
 
 class StellarTransactionFailed(Exception):
@@ -52,10 +58,10 @@ def get_bul_account(pubkey, accept_untrusted=False):
     """Get account details."""
     LOGGER.debug("getting details of %s", pubkey)
     try:
-        details = stellar_base.address.Address(pubkey, horizon=HORIZON_SERVER)
+        details = stellar_base.address.Address(pubkey, horizon_uri=HORIZON_SERVER)
         details.get()
-    except stellar_base.address.AccountNotExistError:
-        raise stellar_base.address.AccountNotExistError("no account found for {}".format(pubkey))
+    except stellar_base.exceptions.HorizonError:
+        raise StellarAccountNotExists("no account found for {}".format(pubkey))
     account = {'sequence': details.sequence, 'signers': details.signers, 'thresholds': details.thresholds}
     for balance in details.balances:
         if balance.get('asset_type') == 'native':
@@ -78,27 +84,31 @@ def add_memo(builder, memo):
     return builder
 
 
-def gen_builder(pubkey='', sequence_delta=None):
+def gen_builder(pubkey, sequence_delta=None):
     """Create a builder."""
     if sequence_delta:
         sequence = int(get_bul_account(pubkey, accept_untrusted=True)['sequence']) + sequence_delta
-        builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, address=pubkey, sequence=sequence)
+        builder = stellar_base.builder.Builder(horizon_uri=HORIZON_SERVER, address=pubkey, sequence=sequence)
     else:
-        builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, address=pubkey)
+        builder = stellar_base.builder.Builder(horizon_uri=HORIZON_SERVER, address=pubkey)
     return builder
 
 
 def submit(builder):
     """Submit a transaction and raise an exception if it fails."""
-    response = builder.submit()
-    if 'status' in response and response['status'] >= 300:
-        raise StellarTransactionFailed(response)
-    return response
+    try:
+        return builder.submit()
+    except stellar_base.exceptions.HorizonError as exception:
+        raise StellarTransactionFailed(exception.message)
 
 
 def submit_transaction_envelope(envelope, seed=None):
     """Submit a transaction from an XDR of the envelope. Optionally sign it."""
-    builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, address='', secret=seed)
+    address = None
+    if seed is None:
+        transaction_envelope = stellar_base.transaction_envelope.TransactionEnvelope.from_xdr(envelope)
+        address = transaction_envelope.tx.source
+    builder = stellar_base.builder.Builder(horizon_uri=HORIZON_SERVER, address=address, secret=seed)
     builder.import_from_xdr(envelope)
     if seed:
         builder.sign()
@@ -117,7 +127,7 @@ def prepare_trust(from_pubkey, stroop_limit=None):
     """Prepare trust transaction from account."""
     asset_limit = util.conversion.stroops_to_units(stroop_limit) if stroop_limit is not None else None
     builder = gen_builder(from_pubkey)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, asset_limit)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, asset_limit)
     return builder.gen_te().xdr().decode()
 
 
@@ -148,7 +158,7 @@ def prepare_escrow(
     # Refund transaction, in case of failed delivery, timelocked.
     builder = gen_builder(escrow_pubkey, sequence_delta=1)
     builder.append_payment_op(launcher_pubkey, total, BUL_TOKEN_CODE, ISSUER)
-    builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
+    builder.add_time_bounds({'minTime': deadline, 'maxTime': 0})
     add_memo(builder, 'refund')
     refund_envelope = builder.gen_te()
 
@@ -160,7 +170,7 @@ def prepare_escrow(
 
     # Merge transaction, to drain the remaining XLM from the account, timelocked.
     builder = gen_builder(escrow_pubkey, sequence_delta=2)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(launcher_pubkey)
     add_memo(builder, 'close escrow')
     merge_envelope = builder.gen_te()
@@ -212,7 +222,7 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops,
 
     # Merge transaction, to drain the remaining XLM from the account once relay transaction was submitted.
     builder = gen_builder(relay_pubkey, sequence_delta=2)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(relayer_pubkey)
     add_memo(builder, 'close relay')
     sequence_merge_envelope = builder.gen_te()
@@ -220,9 +230,9 @@ def prepare_relay(relay_pubkey, relayer_pubkey, relayee_pubkey, relayer_stroops,
     # Merge transaction, to drain the remaining XLM from the account even if
     # relay transaction was not submitted, but only after deadline has passed.
     builder = gen_builder(relay_pubkey, sequence_delta=1)
-    builder.append_trust_op(ISSUER, BUL_TOKEN_CODE, 0)
+    builder.append_change_trust_op(BUL_TOKEN_CODE, ISSUER, '0')
     builder.append_account_merge_op(relayer_pubkey)
-    builder.add_time_bounds(type('TimeBound', (), {'minTime': deadline, 'maxTime': 0})())
+    builder.add_time_bounds({'minTime': deadline, 'maxTime': 0})
     add_memo(builder, 'close relay')
     timelock_merge_envelope = builder.gen_te()
 
@@ -276,7 +286,7 @@ def fund_from_issuer(pubkey, stroop_amount):
         raise NotOnTestnet('funding allowed only on testnet')
     bul_amount = util.conversion.stroops_to_units(stroop_amount)
     LOGGER.warning("funding %s from issuer", pubkey)
-    builder = stellar_base.builder.Builder(horizon=HORIZON_SERVER, secret=ISSUER_SEED)
+    builder = stellar_base.builder.Builder(horizon_uri=HORIZON_SERVER, secret=ISSUER_SEED)
     builder.append_payment_op(pubkey, bul_amount, BUL_TOKEN_CODE, ISSUER)
     add_memo(builder, 'fund')
     builder.sign()
